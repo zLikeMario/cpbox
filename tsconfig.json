@@ -20,7 +20,7 @@
     "declaration": true,
     "declarationDir": "./dist",
     "outDir": "./dist",
-    "emitDeclarationOnly": false,
+    "emitDeclarationOnly": true,
     "noEmit": false,
     "strict": true,
     "noUnusedLocals": true,
