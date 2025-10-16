@@ -13,11 +13,12 @@
     "types": [
       "vite/client"
     ],
-    "skipLibCheck": true,
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "declaration": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
     "declarationDir": "./dist",
     "outDir": "./dist",
     "emitDeclarationOnly": true,

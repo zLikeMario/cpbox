@@ -412,9 +412,12 @@ __metadata:
   dependencies:
     "@zlikemario/helper": "npm:^0.0.10"
     typescript: "npm:~5.9.3"
-    viem: "npm:^2.38.1"
+    viem: "npm:^2.38.2"
     vite: "npm:rolldown-vite@7.1.14"
     vitest: "npm:^3.2.4"
+  peerDependencies:
+    "@zlikemario/helper": "*"
+    viem: "*"
   languageName: unknown
   linkType: soft
 
@@ -1621,9 +1624,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.38.1":
-  version: 2.38.1
-  resolution: "viem@npm:2.38.1"
+"viem@npm:^2.38.2":
+  version: 2.38.2
+  resolution: "viem@npm:2.38.2"
   dependencies:
     "@noble/curves": "npm:1.9.1"
     "@noble/hashes": "npm:1.8.0"
@@ -1638,7 +1641,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/16c063a2e7fc29d98be58bc2442b38094244feb996f41d679f2798cdad54ef703a554b18981e96b405f800e5807b6805d47c163fc816c3812bd3d5c5605a9b03
+  checksum: 10c0/148fed3d358391d77301459055ade9e938fa9349e42d8416174a185ba10535921095b2759b88fc52f39a4ebf928e17cdd06646cfc330f4686c3403c5d5306fd0
   languageName: node
   linkType: hard
 

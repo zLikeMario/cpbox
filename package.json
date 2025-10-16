@@ -1,41 +1,46 @@
 {
   "name": "@zlikemario/cpbox",
-  "private": true,
-  "version": "0.0.1",
+  "version": "0.0.3",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc",
-    "tsc": "tsc",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "tsc": "tsc -p tsconfig.build.json",
     "preview": "vite preview",
     "test": "vitest"
   },
   "devDependencies": {
+    "@zlikemario/helper": "^0.0.10",
     "typescript": "~5.9.3",
+    "viem": "^2.38.2",
     "vite": "npm:rolldown-vite@7.1.14",
     "vitest": "^3.2.4"
   },
   "resolutions": {
     "vite": "npm:rolldown-vite@7.1.14"
   },
-  "main": "./dist/evm.js",
+  "main": "./dist/evm.cjs",
   "module": "./dist/evm.js",
-  "types": "./dist/evm.d.ts",
+  "types": "./dist/evm/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/evm.d.ts",
+      "types": "./dist/evm/index.d.ts",
       "import": "./dist/evm.js",
       "require": "./dist/evm.cjs"
     },
     "./evm": {
-      "types": "./dist/evm.d.ts",
+      "types": "./dist/evm/index.d.ts",
       "import": "./dist/evm.js",
       "require": "./dist/evm.cjs"
     }
   },
   "packageManager": "yarn@4.10.3",
-  "dependencies": {
-    "@zlikemario/helper": "^0.0.10",
-    "viem": "^2.38.1"
+  "peerDependencies": {
+    "@zlikemario/helper": "*",
+    "viem": "*"
   }
 }
