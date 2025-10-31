@@ -6,12 +6,14 @@ import {
   type Abi,
   type WalletClient,
   type Account,
+  type Transport,
+  type PrivateKeyAccount,
 } from "viem";
 import Basic from "./basic";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import type { CallOverride } from "./type";
 
-abstract class Contract<A extends Abi> extends Basic {
+class Contract<A extends Abi> extends Basic {
   contractAddress: string;
   abi: A;
   constructor(chain: Chain, contractAddress: string, abi: A, rpcOrProvider?: string | EIP1193Provider) {
@@ -38,7 +40,7 @@ abstract class Contract<A extends Abi> extends Basic {
     });
   }
 
-  getWriteableContract(client?: WalletClient) {
+  getWriteableContract(client?: WalletClient<Transport, Chain, PrivateKeyAccount>) {
     return getContract({
       address: this.contractAddress as Address,
       abi: this.abi,

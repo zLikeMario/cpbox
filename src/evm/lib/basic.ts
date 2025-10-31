@@ -7,6 +7,7 @@ import {
   type Chain,
   type EIP1193Provider,
   type Hex,
+  type PrivateKeyAccount,
   type Transport,
 } from "viem";
 import { waitForTransactionReceipt } from "viem/actions";
@@ -16,8 +17,10 @@ import { privateKeyToAccount } from "viem/accounts";
 class Basic {
   transport: Transport;
   chain: Chain;
+  rpcOrProvider?: string | EIP1193Provider;
   constructor(chain: Chain, rpcOrProvider?: string | EIP1193Provider) {
     this.chain = chain;
+    this.rpcOrProvider = rpcOrProvider;
     this.transport = typeof rpcOrProvider === "string" || !rpcOrProvider ? http(rpcOrProvider) : custom(rpcOrProvider);
   }
 
@@ -57,7 +60,7 @@ class Basic {
 
   @Memoize()
   get walletClient() {
-    return createWalletClient({
+    return createWalletClient<Transport, Chain, PrivateKeyAccount>({
       chain: this.chain,
       transport: this.transport,
     });
@@ -65,7 +68,7 @@ class Basic {
 
   getWalletClient(providerOrPrivateKey?: EIP1193Provider | string) {
     if (!providerOrPrivateKey) {
-      return createWalletClient({
+      return createWalletClient<Transport, Chain, PrivateKeyAccount>({
         chain: this.chain,
         transport: this.transport,
       });
@@ -78,7 +81,7 @@ class Basic {
         account: privateKeyAccount,
       });
     }
-    return createWalletClient({
+    return createWalletClient<Transport, Chain, PrivateKeyAccount>({
       chain: this.chain,
       transport: custom(providerOrPrivateKey),
     });
