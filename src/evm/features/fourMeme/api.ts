@@ -3,7 +3,7 @@ import FourMeme from ".";
 import request from "~/api/request";
 
 export async function getUserNonce(address: string) {
-  const result = await request.post<any, any>(
+  const response = await request.post<{ data: string; msg: string }>(
     "https://four.meme/meme-api/v1/private/user/nonce/generate",
     {
       accountAddress: address, // "user wallet address"
@@ -12,13 +12,14 @@ export async function getUserNonce(address: string) {
     },
     { headers: { "content-type": "application/json" } },
   );
+  const result = response.data;
   if (!result?.data) throw new Error(`FourMeme Generate Nonce Failed: ${result.msg}`);
   return result.data as string;
 }
 
 export async function loginFourMeme(address: string, nonce: string, sign: (message: string) => Promise<string>) {
   const signature = await sign(`You are sign in Meme ${nonce}`);
-  const result = await request.post<any, any>(
+  const response = await request.post<{ data: string; msg: string }>(
     "https://four.meme/meme-api/v1/private/user/login/dex",
     {
       region: "WEB",
@@ -32,6 +33,7 @@ export async function loginFourMeme(address: string, nonce: string, sign: (messa
       headers: { "content-type": "application/json" },
     },
   );
+  const result = response.data;
   if (!result?.data) throw new Error(`FourMeme Login Failed: ${result.msg}`);
   return result.data as string;
 }
@@ -39,9 +41,14 @@ export async function loginFourMeme(address: string, nonce: string, sign: (messa
 export async function uploadTokenImage(accessToken: string, file: File) {
   const data = new FormData();
   data.set("file", file);
-  const result = await request.post<any, any>("https://four.meme/meme-api/v1/private/token/upload", data, {
-    headers: { "meme-web-access": accessToken },
-  });
+  const response = await request.post<{ data: string; msg: string }>(
+    "https://four.meme/meme-api/v1/private/token/upload",
+    data,
+    {
+      headers: { "meme-web-access": accessToken },
+    },
+  );
+  const result = response.data;
   if (!result?.data) throw new Error(`FourMeme Upload Token Image Failed: ${result.msg}`);
   return result.data as string;
 }
@@ -92,7 +99,7 @@ export async function createToken(
   },
   creatorBuyAmount: NumberString = "0", // 0 为不买入
 ) {
-  const result = await request.post<any, any>(
+  const response = await request.post<{ data: { createArg: string; signature: string }; msg: string }>(
     "https://four.meme/meme-api/v1/private/token/create",
     {
       ...createTokenFixedParams,
@@ -109,6 +116,7 @@ export async function createToken(
     },
     { headers: { "content-type": "application/json", "meme-web-access": accessToken } },
   );
+  const result = response.data;
   if (!result?.data) throw new Error(`FourMeme Create Token Failed: ${result.msg}`);
   return result.data as { createArg: string; signature: string };
 }
