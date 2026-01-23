@@ -22,14 +22,15 @@ import FACTORY_ABI_V2 from "../../abi/pancakeFactoryV2";
 import POOL_ABI_V2 from "../../abi/pancakePoolV2";
 import POOL_ABI_V3 from "../../abi/pancakePoolV3";
 import { BigNumber } from "@zlikemario/helper/number";
-import { Contract } from "~/evm/lib";
+import { Contract, type CallOverride } from "~/evm/lib";
 import { bsc } from "viem/chains";
 import type { Address, EIP1193Provider } from "viem";
 import { Memoize } from "@zlikemario/helper/decorator-old";
+import type { NumberString } from "@zlikemario/helper/types";
 
 export class PancakeFactoryV2 extends Contract<typeof FACTORY_ABI_V2> {
   static fee = 2500;
-  static poolFee = "0.0025"; // 0.25%
+  static poolFeeRate = "0.0025"; // 0.25%
   constructor(rpcOrProvider?: string | EIP1193Provider) {
     super(bsc, "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73", FACTORY_ABI_V2, rpcOrProvider);
   }
@@ -57,21 +58,21 @@ export class PancakeFactoryV3 extends Contract<typeof FACTORY_ABI_V3> {
         return {
           poolAddress,
           fee,
-          poolFee: BigNumber(fee)
+          poolFeeRate: BigNumber(fee)
             .div(10n ** 6n)
             .toString(),
         };
-      })
+      }),
     );
     return results
       .filter(
         (
-          i
+          i,
         ): i is PromiseFulfilledResult<{
           poolAddress: `0x${string}`;
           fee: number;
-          poolFee: NumberString;
-        }> => i.status === "fulfilled"
+          poolFeeRate: NumberString;
+        }> => i.status === "fulfilled",
       )
       .map((i) => i.value);
   }
@@ -110,8 +111,8 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
     super(bsc, "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4", PANCAKE_SMART_ABI, rpcOrProvider);
   }
 
-  static computeMinOutTokenRawAmount(rawBNBAmount: bigint, price: NumberString, slippage: number) {
-    const minOut = BigNumber(rawBNBAmount)
+  static computeMinOutTokenAmount(inAmount: bigint, price: NumberString, slippage: number) {
+    const minOut = BigNumber(inAmount)
       .div(price)
       .times(1 - slippage)
       .dp(0, BigNumber.ROUND_DOWN)
@@ -119,29 +120,29 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
     return BigInt(minOut);
   }
 
-  @Memoize(0)
+  @Memoize()
   async nativeAddress() {
     return await this.readableContract.read.WETH9();
   }
 
-  @Memoize(0)
+  @Memoize()
   async factoryV2Address() {
     return await this.readableContract.read.factoryV2();
   }
 
-  @Memoize(0)
+  @Memoize()
   async factoryV3Address() {
     return await this.readableContract.read.factory();
   }
 
   @Memoize(0, (b, q) => `${b}-${q}`)
-  async getCachedPoolAddress(outToken: string, inToken: string) {
+  async getPoolData(outToken: string, inToken: string) {
     const [factoryV2, factoryV3] = await Promise.all([this.factoryV2Address(), this.factoryV3Address()]);
     if (!factoryV2 && !factoryV3) throw new Error("no factory found on router");
 
     let isV3: boolean = false;
     let poolAddress: string;
-    let poolFee = PancakeFactoryV2.poolFee;
+    let poolFeeRate = PancakeFactoryV2.poolFeeRate;
     let fee = PancakeFactoryV2.fee;
     const factoryV2Contract = new PancakeFactoryV2(this.rpcOrProvider);
     poolAddress = await factoryV2Contract.getPoolAddress(outToken, inToken);
@@ -154,17 +155,17 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
        */
       const pools = await factoryV3Contract.getPoolAddressList(outToken, inToken);
       if (!pools.length) throw new Error("pool not found");
-      ({ poolAddress, fee, poolFee } = pools[0]);
+      ({ poolAddress, fee, poolFeeRate } = pools[0]);
     }
     if (!poolAddress) throw new Error("pair not found");
 
-    return { poolAddress, isV3, poolFee, fee };
+    return { poolAddress, isV3, poolFeeRate, fee };
   }
 
-  async getMinOutTokenRawAmount(outToken: string, inToken: string, inAmount: bigint, slippage: number) {
-    const { isV3, poolAddress, poolFee, fee } = await this.getCachedPoolAddress(outToken, inToken);
+  async getMinOutToken(outToken: string, inToken: string, inAmount: bigint, slippage: number) {
+    const { isV3, poolAddress, poolFeeRate, fee } = await this.getPoolData(outToken, inToken);
     let price: NumberString;
-    const realQuoteAmount = BigInt(BigNumber(inAmount).times(BigNumber(1).minus(poolFee)).toString());
+    const realInAmount = BigInt(BigNumber(inAmount).times(BigNumber("1").minus(poolFeeRate)).toString());
     if (isV3) {
       const pool = new PancakePoolV3(poolAddress, this.rpcOrProvider);
       price = await pool.getPrice();
@@ -173,7 +174,7 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
       price = await pool.getPrice();
     }
     return {
-      minOutToken: PancakeSwap.computeMinOutTokenRawAmount(realQuoteAmount, price, slippage),
+      minOutToken: PancakeSwap.computeMinOutTokenAmount(realInAmount, price, slippage),
       fee,
     };
   }
@@ -183,12 +184,18 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
     outToken: string,
     inAmount: bigint,
     slippage: number,
-    providerOrPrivateKey?: EIP1193Provider | string
+    providerOrPrivateKey?: EIP1193Provider | string,
+    callOverride?: CallOverride,
   ) {
     const walletClient = this.getWalletClient(providerOrPrivateKey);
     const contract = this.getWriteableContract(walletClient);
-    const { minOutToken, fee } = await this.getMinOutTokenRawAmount(outToken, inToken, inAmount, slippage);
+    const { minOutToken, fee } = await this.getMinOutToken(outToken, inToken, inAmount, slippage);
     const receiver = walletClient.account.address;
+    const nativeAddress = await this.nativeAddress();
+    let value = 0n;
+    if (inToken.toLocaleLowerCase() === nativeAddress.toLocaleLowerCase()) {
+      value = inAmount;
+    }
     const params = {
       tokenIn: inToken as Address,
       tokenOut: outToken as Address,
@@ -198,7 +205,8 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
       amountOutMinimum: minOutToken,
       sqrtPriceLimitX96: 0n,
     };
-    contract.write.exactInputSingle([params]);
+    const hash = await contract.write.exactInputSingle([params], { value, ...callOverride });
+    return this.wrapWriteContractReturn(hash);
   }
 }
 

@@ -19,7 +19,7 @@ class Multicall {
     chain: Chain,
     tokenAddress: string,
     addressList: string[],
-    rpcOrProvider?: string | EIP1193Provider
+    rpcOrProvider?: string | EIP1193Provider,
   ) {
     const contract = new Basic(chain, rpcOrProvider);
     return await contract.publicClient.multicall({
@@ -36,7 +36,7 @@ class Multicall {
     chain: Chain,
     tokenAddress: string,
     addressList: string[],
-    rpcOrProvider?: string | EIP1193Provider
+    rpcOrProvider?: string | EIP1193Provider,
   ) {
     const contract = new Basic(chain, rpcOrProvider);
     return await contract.publicClient.multicall({

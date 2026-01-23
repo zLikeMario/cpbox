@@ -1,0 +1,688 @@
+/**
+ * @name FourMeme
+ * @description four.meme 的买卖程序
+ * @link https://four.meme/zh-TW
+ * @link https://easy-fight-6a5.notion.site/Documentation-for-Integration-2e84ef6db4ca4a678f8512099aaf2330
+ *
+ * @member fourMemeHelper
+ *  获取用户信息, 执行预计算
+ *  @method getTokenInfo 获取 token 信息
+ *  @tryBuy 尝试购买并预估结果
+ *  @trySell 尝试出售并预估结果
+ *
+ * @member fourMemeV1
+ *  仍然用于交易旧堤币，但无法创建新代币
+ *  @method purchaseTokenAMAP 购买 “特定BNB” 和 “最小得到代币数量”
+ *  @method purchaseToken 购买 ”特定代币数量“ 和 ”最大BNB花费“
+ *  @method saleToken 出售 “特定代币数量”
+ *
+ * @member fourMemeV2
+ *  用于交易新代币，(2024年9月5日之后创建的代币)
+ *  @method buyTokenAMAP(address,address,uint256,uint256) 为 “特定地址” 购买 “特定BNB” 和 “最小得到代币数量”
+ *  @method buyTokenAMAP(address,uint256,uint256) 购买 “特定BNB” 和 “最小得到代币数量”
+ *  @method buyTokenAMAP(uint256,address,uint256,uint256) 购买 “特定BNB” 和 “最小得到代币数量” (第一个参数给 0)
+ *  @method buyToken(address,address,uint256,uint256) 为 “特定地址” 购买 ”特定代币数量“ 和 ”最大BNB花费“
+ *  @method buyToken(address,uint256,uint256) 购买 ”特定代币数量“ 和 ”最大BNB花费“
+ *  @method sellToken 出售 “特定代币数量”
+ *  @method sellToken(uint256,address,uint256,uint256) 出售 “特定代币数量” 和 “最小得到的 BNB” (第一个参数给 0)
+ *
+ * @implements
+ *  1. 使用 bsc_helper 的 getTokenInfo 获取 token 信息
+ *  2. 如果 liquidityAdded 是 true，则需要通过 pancake 购买
+ *  3. 否则查看 version 是否是 1(V1 创建)，否则使用 V2
+ */
+
+import fourMemeHelper from "./abi/fourMemeHelper";
+import fourMemeV1 from "./abi/fourMemeV1";
+import fourMemeV2 from "./abi/fourMemeV2";
+import {
+  Contract,
+  JsonRpcProvider,
+  TransactionResponse,
+  Signer,
+  Provider,
+  CallOverrides,
+  MaxUint256,
+  formatUnits,
+  Wallet,
+  parseUnits,
+} from "~/assets/scripts/tools/ethersv5";
+import { toSigner, contractReturnToMap } from "./utils";
+import LikeErc20 from "./LikeErc20";
+import BigNumber from "bignumber.js";
+import { createToken, getTokenInfo, getUserNonce, loginFourMeme, lpTradingFee, uploadTokenImage } from "~/api/fourMeme";
+import { getCreate2Address, keccak256 } from "ethersV6";
+import { tryCatchAsync } from "~/assets/scripts/tools/utils";
+import { interval, switchMap } from "rxjs";
+
+export const FACTORY_ADDRESS = "0x757eba15a64468e6535532fcf093cef90e226f85";
+export const FOURMEME_TOKEN_CODE =
+  "0x608060405234801561000f575f80fd5b506100193361001e565b61006f565b600580546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a35050565b610eee8061007c5f395ff3fe608060405234801561000f575f80fd5b5060043610610127575f3560e01c806370a08231116100a9578063a9059cbb1161006e578063a9059cbb14610245578063c5c03af314610258578063d72dd3b414610261578063dd62ed3e14610274578063f2fde38b14610287575f80fd5b806370a08231146101df578063715018a6146102075780638da5cb5b1461020f57806395d89b411461022a578063a457c2d714610232575f80fd5b80632eabc917116100ef5780632eabc91714610199578063313ce567146101ae57806332be6330146101bd57806339509351146101c55780633af3d783146101d8575f80fd5b806306fdde031461012b578063095ea7b31461014957806318160ddd1461016c5780631c8fc2c01461017e57806323b872dd14610186575b5f80fd5b61013361029a565b6040516101409190610b24565b60405180910390f35b61015c610157366004610b8a565b61032a565b6040519015158152602001610140565b6002545b604051908152602001610140565b610170600181565b61015c610194366004610bb2565b610343565b6101ac6101a7366004610c88565b610366565b005b60405160128152602001610140565b610170600281565b61015c6101d3366004610b8a565b6103f7565b6101705f81565b6101706101ed366004610cf0565b6001600160a01b03165f9081526020819052604090205490565b6101ac610418565b6005546040516001600160a01b039091168152602001610140565b61013361042b565b61015c610240366004610b8a565b61043a565b61015c610253366004610b8a565b6104b4565b61017060065481565b6101ac61026f366004610d10565b6104c1565b610170610282366004610d27565b6104da565b6101ac610295366004610cf0565b610504565b6060600380546102a990610d58565b80601f01602080910402602001604051908101604052809291908181526020018280546102d590610d58565b80156103205780601f106102f757610100808354040283529160200191610320565b820191905f5260205f20905b81548152906001019060200180831161030357829003601f168201915b5050505050905090565b5f3361033781858561057a565b60019150505b92915050565b5f3361035085828561069d565b61035b858585610715565b506001949350505050565b61036e6108c2565b60075460ff16156103bb5760405162461bcd60e51b8152602060048201526012602482015271151bdad95b8e881a5b9a5d1a585b1a5e995960721b60448201526064015b60405180910390fd5b6007805460ff191660011790556103d2838361091c565b6103ed6103e76005546001600160a01b031690565b8261093a565b5050600160065550565b5f3361033781858561040983836104da565b6104139190610d90565b61057a565b6104206108c2565b6104295f610a02565b565b6060600480546102a990610d58565b5f338161044782866104da565b9050838110156104a75760405162461bcd60e51b815260206004820152602560248201527f45524332303a2064656372656173656420616c6c6f77616e63652062656c6f77604482015264207a65726f60d81b60648201526084016103b2565b61035b828686840361057a565b5f33610337818585610715565b6104c96108c2565b600654156104d75760068190555b50565b6001600160a01b039182165f90815260016020908152604080832093909416825291909152205490565b61050c6108c2565b6001600160a01b0381166105715760405162461bcd60e51b815260206004820152602660248201527f4f776e61626c653a206e6577206f776e657220697320746865207a65726f206160448201526564647265737360d01b60648201526084016103b2565b6104d781610a02565b6001600160a01b0383166105dc5760405162461bcd60e51b8152602060048201526024808201527f45524332303a20617070726f76652066726f6d20746865207a65726f206164646044820152637265737360e01b60648201526084016103b2565b6001600160a01b03821661063d5760405162461bcd60e51b815260206004820152602260248201527f45524332303a20617070726f766520746f20746865207a65726f206164647265604482015261737360f01b60648201526084016103b2565b6001600160a01b038381165f8181526001602090815260408083209487168084529482529182902085905590518481527f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925910160405180910390a3505050565b5f6106a884846104da565b90505f19811461070f57818110156107025760405162461bcd60e51b815260206004820152601d60248201527f45524332303a20696e73756666696369656e7420616c6c6f77616e636500000060448201526064016103b2565b61070f848484840361057a565b50505050565b6001600160a01b0383166107795760405162461bcd60e51b815260206004820152602560248201527f45524332303a207472616e736665722066726f6d20746865207a65726f206164604482015264647265737360d81b60648201526084016103b2565b6001600160a01b0382166107db5760405162461bcd60e51b815260206004820152602360248201527f45524332303a207472616e7366657220746f20746865207a65726f206164647260448201526265737360e81b60648201526084016103b2565b6107e6838383610a53565b6001600160a01b0383165f908152602081905260409020548181101561085d5760405162461bcd60e51b815260206004820152602660248201527f45524332303a207472616e7366657220616d6f756e7420657863656564732062604482015265616c616e636560d01b60648201526084016103b2565b6001600160a01b038481165f81815260208181526040808320878703905593871680835291849020805487019055925185815290927fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef910160405180910390a361070f565b6005546001600160a01b031633146104295760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016103b2565b60036109288382610dfc565b5060046109358282610dfc565b505050565b6001600160a01b0382166109905760405162461bcd60e51b815260206004820152601f60248201527f45524332303a206d696e7420746f20746865207a65726f20616464726573730060448201526064016103b2565b61099b5f8383610a53565b8060025f8282546109ac9190610d90565b90915550506001600160a01b0382165f81815260208181526040808320805486019055518481527fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef910160405180910390a35050565b600580546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a35050565b600160065403610aa55760405162461bcd60e51b815260206004820152601d60248201527f546f6b656e3a205472616e73666572206973207265737472696374656400000060448201526064016103b2565b600260065403610935576005546001600160a01b0384811691161480610ad857506005546001600160a01b038381169116145b6109355760405162461bcd60e51b815260206004820152601760248201527f546f6b656e3a20496e76616c6964207472616e7366657200000000000000000060448201526064016103b2565b5f6020808352835180828501525f5b81811015610b4f57858101830151858201604001528201610b33565b505f604082860101526040601f19601f8301168501019250505092915050565b80356001600160a01b0381168114610b85575f80fd5b919050565b5f8060408385031215610b9b575f80fd5b610ba483610b6f565b946020939093013593505050565b5f805f60608486031215610bc4575f80fd5b610bcd84610b6f565b9250610bdb60208501610b6f565b9150604084013590509250925092565b634e487b7160e01b5f52604160045260245ffd5b5f82601f830112610c0e575f80fd5b813567ffffffffffffffff80821115610c2957610c29610beb565b604051601f8301601f19908116603f01168101908282118183101715610c5157610c51610beb565b81604052838152866020858801011115610c69575f80fd5b836020870160208301375f602085830101528094505050505092915050565b5f805f60608486031215610c9a575f80fd5b833567ffffffffffffffff80821115610cb1575f80fd5b610cbd87838801610bff565b94506020860135915080821115610cd2575f80fd5b50610cdf86828701610bff565b925050604084013590509250925092565b5f60208284031215610d00575f80fd5b610d0982610b6f565b9392505050565b5f60208284031215610d20575f80fd5b5035919050565b5f8060408385031215610d38575f80fd5b610d4183610b6f565b9150610d4f60208401610b6f565b90509250929050565b600181811c90821680610d6c57607f821691505b602082108103610d8a57634e487b7160e01b5f52602260045260245ffd5b50919050565b8082018082111561033d57634e487b7160e01b5f52601160045260245ffd5b601f821115610935575f81815260208120601f850160051c81016020861015610dd55750805b601f850160051c820191505b81811015610df457828155600101610de1565b505050505050565b815167ffffffffffffffff811115610e1657610e16610beb565b610e2a81610e248454610d58565b84610daf565b602080601f831160018114610e5d575f8415610e465750858301515b5f19600386901b1c1916600185901b178555610df4565b5f85815260208120601f198616915b82811015610e8b57888601518255948401946001909101908401610e6c565b5085821015610ea857878501515f19600388901b60f8161c191681555b5050505050600190811b0190555056fea26469706673582212203874a68f141da9e7322cb8fa8158cb6e06dacbfbfbf6320d1070ee24cf24335864736f6c63430008140033";
+
+export const helper = {
+  abi: fourMemeHelper,
+  contract: {
+    BSC: "0xF251F83e40a78868FcfA3FA4599Dad6494E46034",
+    Arbitrum_One: "0x02287dc3CcA964a025DAaB1111135A46C10D3A57",
+    Base: "0x1172FABbAc4Fe05f5a5Cebd8EBBC593A76c42399",
+  },
+};
+
+export const V1 = {
+  abi: fourMemeV1,
+  contract: {
+    BSC: "0xEC4549caDcE5DA21Df6E6422d448034B5233bFbC",
+  },
+};
+
+export const V2 = {
+  abi: fourMemeV2,
+  contract: {
+    BSC: "0x5c952063c7fc8610FFDB798152D69F0B9550762b",
+  },
+};
+
+class FourMeme {
+  constructor(private rpc: string) {}
+
+  static aligningAmount(v: bigint) {
+    return (v / 1000000000n) * 1000000000n;
+  }
+
+  static #providerInstances = new Map<string, JsonRpcProvider>();
+  #provider?: JsonRpcProvider;
+  get provider() {
+    if (!this.#provider) {
+      this.#provider =
+        FourMeme.#providerInstances.get(this.rpc) ??
+        FourMeme.#providerInstances.set(this.rpc, new JsonRpcProvider(this.rpc)).get(this.rpc)!;
+      if (this.#provider.pollingInterval) this.#provider.pollingInterval = 2000;
+    }
+    return this.#provider;
+  }
+
+  #v1Contract?: Contract;
+  get v1Contract() {
+    if (!this.#v1Contract) {
+      this.#v1Contract = new Contract(V1.contract.BSC, V1.abi, this.provider);
+    }
+    return this.#v1Contract;
+  }
+
+  #v2Contract?: Contract;
+  get v2Contract() {
+    if (!this.#v2Contract) {
+      this.#v2Contract = new Contract(V2.contract.BSC, V2.abi, this.provider);
+    }
+    return this.#v2Contract;
+  }
+
+  private helperContract?: Contract;
+  get #helperContract() {
+    if (!this.helperContract) {
+      this.helperContract = new Contract(helper.contract.BSC, helper.abi, this.provider);
+    }
+    return this.helperContract;
+  }
+
+  async #getParsedHelperReturn(method: string, ...params: any[]) {
+    return contractReturnToMap(helper.abi, method, await this.#helperContract[method](...params));
+  }
+
+  async checkTradeAmount(tokenAddress: string, bnbRawAmount: bigint) {
+    const tokenInfo = await this.getStaticTokenInfo(tokenAddress);
+    if (bnbRawAmount <= tokenInfo.minTradingFee) {
+      throw new Error("支付金额不能低于最低手续费");
+    }
+    const willSpendBNB = BigNumber(String(bnbRawAmount));
+    const tradingFee = willSpendBNB.times(tokenInfo.tradingFeeRate).dp(0, BigNumber.ROUND_UP);
+    return BigInt(
+      willSpendBNB
+        .minus(BigNumber.max(tradingFee, String(tokenInfo.minTradingFee)))
+        .dp(0)
+        .toString()
+    );
+  }
+
+  async v1BuyToken(
+    tokenAddress: string,
+    spendBnbRawAmount: bigint,
+    minTokenRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ): Promise<TransactionResponse> {
+    const signer = toSigner(signerOrPrivateKey, this.provider);
+    const signerContract = this.v1Contract.connect(signer);
+    return await signerContract.purchaseTokenAMAP(tokenAddress, spendBnbRawAmount, minTokenRawAmount, {
+      value: spendBnbRawAmount,
+      ...callOverride,
+    });
+  }
+
+  async v2BuyToken(
+    tokenAddress: string,
+    spendBnbRawAmount: bigint,
+    minTokenRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ): Promise<TransactionResponse> {
+    spendBnbRawAmount = FourMeme.aligningAmount(spendBnbRawAmount);
+    const signer = toSigner(signerOrPrivateKey, this.provider);
+    const signerContract = this.v2Contract.connect(signer);
+    return await signerContract["buyTokenAMAP(uint256,address,uint256,uint256)"](
+      0n,
+      tokenAddress,
+      spendBnbRawAmount,
+      minTokenRawAmount,
+      { value: spendBnbRawAmount, ...callOverride }
+    );
+  }
+  async createSignedV2BuyTokenTransaction(
+    signer: Signer,
+    tokenAddress: string,
+    spendBnbRawAmount: bigint,
+    minTokenRawAmount: bigint,
+    callOverride?: CallOverrides
+  ) {
+    const signerContract = this.v2Contract.connect(signer);
+    const transaction = await signerContract.populateTransaction["buyTokenAMAP(uint256,address,uint256,uint256)"](
+      0n,
+      tokenAddress,
+      spendBnbRawAmount,
+      minTokenRawAmount,
+      { value: FourMeme.tradeWithFee(spendBnbRawAmount), ...callOverride }
+    );
+    if (!transaction.gasLimit) {
+      // 如果是开盘合并买，预估一定会失败
+      // gasLimit 参考 https://bscscan.com/tx/0x5c789a04e2a996a4c4987b3bf3277eab8454fccbd0ff9241c8a88f6ca176da60
+      // transaction.gasLimit = BigUint.from("220000");
+      // 预估的时候必须要 Gas Limit， 之后预估的就比较接近了
+      transaction.gasLimit = await tryCatchAsync(this.provider.estimateGas(transaction), () => 220000n);
+    }
+    return signer.signTransaction(transaction);
+  }
+  static tradeWithFee(bnb: bigint) {
+    return BigInt(BigNumber(lpTradingFee).times(bnb).plus(bnb).dp(0).toString());
+  }
+
+  /**
+   * v1 版本卖出代币
+   * !!! 测试发现。如果没有传 gasLimit 调用合约会报错（目前不传没有通过过，可能和合约有关，需要多测试几个代币）
+   */
+  async v1SellToken(
+    tokenAddress: string,
+    tokenRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ): Promise<TransactionResponse> {
+    const signer = toSigner(signerOrPrivateKey, this.provider);
+    const signerContract = this.v1Contract.connect(signer);
+    return await signerContract.saleToken(tokenAddress, tokenRawAmount, { ...callOverride });
+  }
+
+  async v2SellToken(
+    tokenAddress: string,
+    tokenRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ): Promise<TransactionResponse> {
+    const signer = toSigner(signerOrPrivateKey, this.provider);
+    const signerContract = this.v2Contract.connect(signer);
+    tokenRawAmount = FourMeme.aligningAmount(tokenRawAmount);
+    return await signerContract.sellToken(tokenAddress, tokenRawAmount, { ...callOverride });
+  }
+  async createSignedV2SellTokenTransaction(
+    signer: Signer,
+    tokenAddress: string,
+    tokenRawAmount: bigint,
+    minGotBNBRawAmount: bigint,
+    callOverride?: CallOverrides
+  ) {
+    const signerContract = this.v2Contract.connect(signer);
+    const transaction = await signerContract.populateTransaction["sellToken(uint256,address,uint256,uint256)"](
+      0n,
+      tokenAddress,
+      tokenRawAmount,
+      minGotBNBRawAmount,
+      { ...callOverride }
+    );
+    console.log(
+      "Token: ",
+      tokenAddress,
+      "TokenAmount:",
+      tokenRawAmount,
+      "MinGotBase:",
+      minGotBNBRawAmount,
+      "Override:",
+      { ...callOverride }
+    );
+    if (!transaction.gasLimit) {
+      // gasLimit 参考 https://bscscan.com/tx/0x7bd6ce9f57883438278e67a0b9fa5432396407d63e833f81ef7f71ffd2f56f6b
+      // transaction.gasLimit = BigUint.from("560000");
+      // 预估的时候必须要 Gas Limit， 之后预估的就比较接近了
+      transaction.gasLimit = await tryCatchAsync(this.provider.estimateGas(transaction), () => 560000n);
+    }
+    return signer.signTransaction(transaction);
+  }
+
+  async approveTokenWithVersion(
+    tokenAddress: string,
+    spender: string,
+    allowance: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ) {
+    const likeErc20 = new LikeErc20(tokenAddress, this.provider);
+    return await likeErc20.approveWithSigner(spender, allowance, signerOrPrivateKey, callOverride);
+  }
+
+  async getTokenInfo(tokenAddress: string): Promise<TokenInfo> {
+    const tokenInfo = (await this.#getParsedHelperReturn("getTokenInfo", tokenAddress)) as TokenInfo;
+    if (tokenInfo.version === 0n) throw new Error("未找到 fourMeme 上的代币池子信息");
+    tokenInfo.tradingFeeRate = BigNumber(tokenInfo.tradingFeeRate).div(10000).toNumber();
+    return tokenInfo;
+  }
+
+  /**
+   * @description 缓存代币信息的值（1s）
+   */
+  static #tokenInfoMap = new Map<string, { data: TokenInfo; expireTime: number }>();
+  async getCachedTokenInfo(tokenAddress: string): Promise<TokenInfo> {
+    const info = FourMeme.#tokenInfoMap.get(tokenAddress);
+    let newInfo = info?.data;
+    if (!info || Date.now() > info.expireTime) {
+      newInfo = await this.getTokenInfo(tokenAddress);
+      FourMeme.#tokenInfoMap.set(tokenAddress, { data: newInfo, expireTime: Date.now() + 1000 });
+    }
+    return newInfo!;
+  }
+
+  /**
+   * @description 如果不需要动态数据，建议使用该接口
+   * * 比如需要这些参数 Pick<TokenInfo, version | launchTime | maxOffers | maxFunds ｜ tradingFeeRate ｜ minTradingFee>
+   */
+  async getStaticTokenInfo(tokenAddress: string): Promise<TokenInfo> {
+    let info = FourMeme.#tokenInfoMap.get(tokenAddress);
+    if (!info) {
+      const newInfo = await this.getTokenInfo(tokenAddress);
+      info = { data: newInfo, expireTime: Date.now() + 1000 };
+      FourMeme.#tokenInfoMap.set(tokenAddress, info);
+    }
+    return info.data;
+  }
+
+  async isV1(tokenAddress: string) {
+    const tokenInfo = await this.getCachedTokenInfo(tokenAddress);
+    if (tokenInfo.quote !== "0x0000000000000000000000000000000000000000") throw new Error("该代币不支持 BNB 交易");
+    if (tokenInfo.liquidityAdded) throw new Error("该代币当前已不能在 FourMeme 交易");
+    if (tokenInfo.offers === 0n) throw new Error("该代币已售罄");
+    const isV1 = tokenInfo.version === 1n;
+    if (isV1) {
+      if (tokenInfo.tokenManager !== V1.contract.BSC) {
+        console.warn(`该代币(v1)建议的合约地址为 ${tokenInfo.tokenManager}`);
+      }
+    } else {
+      if (tokenInfo.tokenManager !== V2.contract.BSC) {
+        console.warn(`该代币(v2)建议的合约地址为 ${tokenInfo.tokenManager}`);
+      }
+    }
+    return isV1;
+  }
+
+  static computeMinOutTokenRawAmount(rawBNBAmount: bigint, price: bigint, slippage: number) {
+    const minOut = BigNumber(rawBNBAmount)
+      .div(price)
+      .times(1 - slippage)
+      .dp(0, BigNumber.ROUND_DOWN)
+      .toString();
+    return minOut; // 代币的数量（未 format）
+  }
+
+  // 想花费规定数量的 BNB，花费的 BNB 包含了手续费
+  // 卖出规定数量 BNB, 求最少可得到的 Token
+  async getMinOutTokenRawAmount(tokenAddress: string, rawBNBAmount: bigint, slippage: number) {
+    const tokenInfo = await this.getCachedTokenInfo(tokenAddress);
+    const likeErc20 = new LikeErc20(tokenAddress, this.provider);
+    const tokenDecimals = await likeErc20.getDecimals();
+    // 买入时需要先扣除手续费，用剩余的BNB计算能买到的代币
+    const tradingFee = BigNumber(rawBNBAmount).times(tokenInfo.tradingFeeRate).dp(0, BigNumber.ROUND_UP);
+    const actualFee = BigNumber.max(tradingFee, tokenInfo.minTradingFee);
+    const actualBuyBNB = BigNumber(rawBNBAmount).minus(actualFee).dp(0, BigNumber.ROUND_DOWN);
+    if (!actualBuyBNB.isPositive()) throw new Error("支付金额不能低于最低手续费");
+    // tokenInfo.lastPrice 代表 "一个Base" 是多少 "最小单位的quote"
+    const tokenAmount = FourMeme.computeMinOutTokenRawAmount(
+      BigInt(actualBuyBNB.toString()),
+      tokenInfo.lastPrice,
+      slippage
+    );
+    return FourMeme.aligningAmount(
+      BigInt(
+        BigNumber(tokenAmount)
+          .times(10 ** tokenDecimals)
+          .toString()
+      )
+    );
+  }
+
+  static computeMinOutBNBRawAmount(tokenAmount: NumberString, price: bigint, slippage: number) {
+    const maxOut = BigNumber(tokenAmount)
+      .times(price)
+      .times(1 - slippage)
+      .dp(0, BigNumber.ROUND_DOWN)
+      .toString();
+    return BigInt(maxOut); // BNB 的最小单位
+  }
+
+  // 想卖出规定数量的 Token，卖出的 Token 包含了手续费
+  // 卖出规定数量 Token，求最小可得到的 BNB
+  async getMinOutBNBRawAmount(tokenAddress: string, rawTokenAmount: bigint, slippage: number) {
+    const tokenInfo = await this.getCachedTokenInfo(tokenAddress);
+    const likeErc20 = new LikeErc20(tokenAddress, this.provider);
+    const tokenDecimals = await likeErc20.getDecimals();
+    const minOutBNB = FourMeme.aligningAmount(
+      FourMeme.computeMinOutBNBRawAmount(formatUnits(rawTokenAmount, tokenDecimals), tokenInfo.lastPrice, slippage)
+    );
+    // 卖出时需要扣除手续费，确保返回值是扣除手续费后的最小 BNB
+    const tradingFee = BigNumber(minOutBNB).times(tokenInfo.tradingFeeRate).dp(0, BigNumber.ROUND_UP);
+    const actualFee = BigNumber.max(tradingFee, tokenInfo.minTradingFee);
+    const minOutAfterFee = BigNumber(minOutBNB).minus(actualFee).dp(0, BigNumber.ROUND_DOWN);
+    // 如果扣除手续费后为负数或0，返回0（这会导致交易验证失败，但至少不会报 GW 错误）
+    return minOutAfterFee.isPositive() ? BigInt(minOutAfterFee.toString()) : 0n;
+  }
+
+  static computeMaxInBNBRawAmount(tokenAmount: NumberString, price: bigint, slippage: number) {
+    const maxOut = BigNumber(tokenAmount)
+      .times(price)
+      .times(1 + slippage)
+      .dp(0, BigNumber.ROUND_CEIL)
+      .toString();
+    return BigInt(maxOut); // BNB 的最小单位
+  }
+
+  // 想买入规定数量的 Token
+  // 买入规定数量 Token，求可能需要支付的 BNB
+  async getMaxInBNBRawAmount(tokenAddress: string, rawTokenAmount: bigint, slippage: number) {
+    const tokenInfo = await this.getCachedTokenInfo(tokenAddress);
+    const likeErc20 = new LikeErc20(tokenAddress, this.provider);
+    const tokenDecimals = await likeErc20.getDecimals();
+    const maxBNB = FourMeme.aligningAmount(
+      FourMeme.computeMaxInBNBRawAmount(formatUnits(rawTokenAmount, tokenDecimals), tokenInfo.lastPrice, slippage)
+    );
+    // 买入时需要加上手续费得到总花费
+    const tradingFee = BigNumber(maxBNB).times(tokenInfo.tradingFeeRate).dp(0, BigNumber.ROUND_UP);
+    const actualFee = BigNumber.max(tradingFee, tokenInfo.minTradingFee);
+    const totalBNB = BigNumber(maxBNB).plus(actualFee).dp(0, BigNumber.ROUND_CEIL);
+    return BigInt(totalBNB.toString());
+  }
+
+  static computeMaxInTokenRawAmount(bnbRawAmount: bigint, price: bigint, slippage: number) {
+    const maxOut = BigNumber(bnbRawAmount)
+      .div(price)
+      .times(1 + slippage)
+      .dp(0, BigNumber.ROUND_CEIL)
+      .toString();
+    return maxOut; // Token 的数量（未format）
+  }
+
+  // 想卖出 Token 得到规定数量的 BNB
+  // 买入规定数量 BNB, 求可能需要支付的 token
+  async getMaxInTokenRawAmount(tokenAddress: string, rawBNBAmount: bigint, slippage: number) {
+    const tokenInfo = await this.getCachedTokenInfo(tokenAddress);
+    const likeErc20 = new LikeErc20(tokenAddress, this.provider);
+    const tokenDecimals = await likeErc20.getDecimals();
+    // 买入时需要先扣除手续费，用剩余的BNB计算能买到的代币
+    const tradingFee = BigNumber(rawBNBAmount).times(tokenInfo.tradingFeeRate).dp(0, BigNumber.ROUND_UP);
+    const actualFee = BigNumber.max(tradingFee, tokenInfo.minTradingFee);
+    const actualBuyBNB = BigNumber(rawBNBAmount).plus(actualFee).dp(0, BigNumber.ROUND_DOWN);
+    const tokenAmount = FourMeme.computeMaxInTokenRawAmount(
+      BigInt(actualBuyBNB.toString()),
+      tokenInfo.lastPrice,
+      slippage
+    );
+    return FourMeme.aligningAmount(
+      BigInt(
+        BigNumber(tokenAmount)
+          .times(10 ** tokenDecimals)
+          .toString()
+      )
+    );
+  }
+
+  /**
+   * 购买代币
+   * !!! spendBNBRawAmount 这个并不是买入的值，而是买入加上手续费的值，真实买入会减去手续费
+   */
+  async buyToken(
+    tokenAddress: string,
+    spendBNBRawAmount: bigint,
+    minTokenRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ) {
+    return await this.v2BuyToken(tokenAddress, spendBNBRawAmount, minTokenRawAmount, signerOrPrivateKey, callOverride);
+  }
+  async buyTokenWithSlippage(
+    tokenAddress: string,
+    spendBNBRawAmount: bigint,
+    slippage: number,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ) {
+    const minOut = await this.getMinOutTokenRawAmount(tokenAddress, spendBNBRawAmount, slippage);
+    return await this.v2BuyToken(tokenAddress, spendBNBRawAmount, minOut, signerOrPrivateKey, callOverride);
+  }
+
+  /**
+   * 出售代币
+   * * 卖出也会收取手续费（tradingFeeRate, minTradingFee）
+   * !!! 如果卖出得到的 BNB 金额小于最低手续费，会交易失败
+   */
+  async sellToken(
+    tokenAddress: string,
+    tokenRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ) {
+    return await this.v2SellToken(tokenAddress, tokenRawAmount, signerOrPrivateKey, callOverride);
+  }
+
+  // 使用新版卖出方法，可以带 minGotBNB
+  async sellToken2(
+    tokenAddress: string,
+    tokenRawAmount: bigint,
+    minGotBNBRawAmount: bigint,
+    signerOrPrivateKey: Signer | Provider | string,
+    callOverride?: CallOverrides
+  ): Promise<TransactionResponse> {
+    const signer = toSigner(signerOrPrivateKey, this.provider);
+    const signerContract = this.v2Contract.connect(signer);
+    tokenRawAmount = FourMeme.aligningAmount(tokenRawAmount);
+    return await signerContract["sellToken(uint256,address,uint256,uint256)"](
+      0n,
+      tokenAddress,
+      tokenRawAmount,
+      minGotBNBRawAmount,
+      {
+        ...callOverride,
+      }
+    );
+  }
+
+  // 授权代币
+  async approveToken(
+    tokenAddress: string,
+    signerOrPrivateKey: Signer | Provider | string,
+    allowance: bigint = MaxUint256.toBigInt()
+  ) {
+    return await this.approveTokenWithVersion(tokenAddress, V2.contract.BSC, allowance, signerOrPrivateKey);
+  }
+
+  async getAllowanceWithVersion(tokenAddress: string, privateKey: string) {
+    const spender = V2.contract.BSC;
+    const likeErc20 = new LikeErc20(tokenAddress, this.provider);
+    const signer = new Wallet(privateKey);
+    return await likeErc20.getRawAllowce(signer.address, spender);
+  }
+
+  async approveTokenPreCheckAllowance(
+    tokenAddress: string,
+    privateKey: string,
+    amount: bigint = MaxUint256.toBigInt(),
+    callOverride?: CallOverrides
+  ) {
+    const allowance = await this.getAllowanceWithVersion(tokenAddress, privateKey);
+    if (allowance < amount) {
+      return await this.approveTokenWithVersion(tokenAddress, V2.contract.BSC, amount, privateKey, callOverride);
+    }
+  }
+
+  static subscribe(address: string, callback: (event: NumberString) => any) {
+    let promise: Promise<string> | undefined;
+    const timer = window.setInterval(() => {
+      if (!promise) {
+        promise = new Promise<NumberString>((resolve) => {
+          getTokenInfo(address)
+            .then((info) => resolve(info.tokenPrice.price))
+            .finally(() => (promise = void 0));
+        });
+      }
+      promise.then(callback);
+    }, 3000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }
+
+  async creaetSignedPublishMemeTokenTransaction(
+    signer: Signer,
+    tokenInfo: {
+      image: File;
+      name: string;
+      symbol: string;
+      description: string;
+      website: string;
+      twitter: string;
+      telegram: string;
+    },
+    amount = "0",
+    callOverride?: CallOverrides
+  ) {
+    const address = await signer.getAddress();
+    const nonce = await getUserNonce(address);
+    const accessToken = await loginFourMeme(address, nonce, signer.signMessage.bind(signer));
+    const imageUrl = await uploadTokenImage(accessToken, tokenInfo.image);
+    const { signature, createArg } = await createToken(accessToken, imageUrl, tokenInfo, amount);
+    const signerContract = this.v2Contract.connect(signer);
+    const transaction = await signerContract.populateTransaction.createToken(createArg, signature, {
+      // FourMeme 部署成本 0.01BNB，参考 https://four.meme/create-token
+      value: FourMeme.tradeWithFee(parseUnits(BigNumber(amount).plus("0.01").toString(), 18).toBigInt()),
+      ...callOverride,
+    });
+    if (!transaction.gasLimit) {
+      // 参考 https://bscscan.com/tx/0x03576bf3a8deff94c1a3314f7e0a42679f2b0032f9d805f49d2b9a1c0db7618a
+      // transaction.gasLimit = BigUint.from("1530000");
+      // 预估的时候必须要 Gas Limit， 之后预估的就比较接近了
+      transaction.gasLimit = await this.provider.estimateGas(transaction);
+    }
+    return {
+      imageUrl,
+      transaction: await signer.signTransaction(transaction),
+      tokenAddress: FourMeme.computeTokenAddress(`0x${createArg.substring(130, 194)}`),
+    };
+  }
+
+  static computeTokenAddress(salt: string) {
+    return getCreate2Address(FACTORY_ADDRESS, salt, keccak256(FOURMEME_TOKEN_CODE));
+  }
+
+  /**
+   * 订阅 fourMemeV2 的交易事件，获取最新代币价格
+   * @param tokenAddress 代币地址
+   * @param callback 回调函数，参数为 { quote: bigint, base: bigint, price: bigint }
+   * @returns 取消订阅的函数
+   *
+   * @example
+   * const unsubscribe = fourMeme.subscribeV2TokenPrice(
+   *   "0x...",
+   *   ({ quote, base, price }) => {
+   *     console.log(`当前价格: ${price}`);
+   *     console.log(`Quote (BNB): ${quote}, Base (Token): ${base}`);
+   *   }
+   * );
+   * // 取消订阅
+   * unsubscribe();
+   */
+  subscribeV2TokenPrice(tokenAddress: string, callback: (data: { price: bigint }) => void): () => void {
+    const contract = this.v2Contract;
+    const normalizedTokenAddress = tokenAddress.toLowerCase();
+
+    // TokenPurchase 事件过滤器（token 参数未被索引，传 null）
+    const purchaseFilter = contract.filters.TokenPurchase(null);
+    // TokenSale 事件过滤器（token 参数未被索引，传 null）
+    const saleFilter = contract.filters.TokenSale(null);
+
+    this.getTokenInfo(tokenAddress).then((info) => {
+      callback({ price: info.lastPrice });
+    });
+
+    const handleEvent = (...args: any[]) => {
+      // 事件参数: token, account, price, amount, cost, fee, offers, funds
+      const token = args[0]; // 代币地址
+
+      // 手动过滤：只处理目标代币的事件
+      if (token.toLowerCase() !== normalizedTokenAddress) {
+        return;
+      }
+
+      // const offers = args[6]; // base 代币数量
+      // const funds = args[7]; // quote BNB 数量
+      const price = args[2]; // 价格, 代表 "一个Base" 是多少 "最小单位的quote"
+
+      callback({ price: BigInt(price.toString()) });
+    };
+
+    // 订阅两个事件
+    contract.on(purchaseFilter, handleEvent);
+    contract.on(saleFilter, handleEvent);
+
+    // 返回取消订阅函数
+    return () => {
+      contract.off(purchaseFilter, handleEvent);
+      contract.off(saleFilter, handleEvent);
+    };
+  }
+
+  subscribeV2TokenPriceFromAPI(tokenAddress: string, callback: (data: { price: bigint }) => void): () => void {
+    this.getTokenInfo(tokenAddress).then((info) => {
+      callback({ price: info.lastPrice });
+    });
+
+    const subscription = interval(2000)
+      .pipe(switchMap(async () => await this.getTokenInfo(tokenAddress)))
+      .subscribe((info) => {
+        callback({ price: info.lastPrice });
+      });
+
+    // 返回取消订阅函数
+    return () => {
+      subscription.unsubscribe();
+    };
+  }
+}
+
+export default FourMeme;
+
+interface TokenInfo {
+  version: bigint;
+  tokenManager: string;
+  quote: string;
+  lastPrice: bigint; // 代表 "一个Base" 是多少 "最小单位的quote"
+  tradingFeeRate: number; // < 1
+  minTradingFee: bigint;
+  launchTime: bigint;
+  offers: bigint;
+  maxOffers: bigint;
+  funds: bigint;
+  maxFunds: bigint;
+  liquidityAdded: boolean;
+}

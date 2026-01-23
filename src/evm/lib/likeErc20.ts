@@ -4,7 +4,7 @@ import { Memoize } from "@zlikemario/helper/decorator-old";
 import { type CallOverride } from "./type";
 
 class LikeErc20 extends Contract<typeof erc20Abi> {
-  public tokenAddress: string;
+  readonly tokenAddress: string;
   constructor(chain: Chain, tokenAddress: string, rpcOrProvider?: string | EIP1193Provider) {
     super(chain, tokenAddress, erc20Abi, rpcOrProvider);
     this.tokenAddress = tokenAddress;
@@ -42,7 +42,7 @@ class LikeErc20 extends Contract<typeof erc20Abi> {
     recipient: string,
     amount: bigint,
     providerOrPrivateKey?: EIP1193Provider | string,
-    callOverride?: CallOverride
+    callOverride?: CallOverride,
   ) {
     const { writeableContract, override } = await this.formatWriteParams(providerOrPrivateKey, callOverride);
     const hash = await writeableContract.write.transfer([recipient as Address, amount], override);
@@ -53,11 +53,11 @@ class LikeErc20 extends Contract<typeof erc20Abi> {
     recipient: string,
     amount: bigint,
     providerOrPrivateKey?: EIP1193Provider | string,
-    callOverride?: CallOverride
+    callOverride?: CallOverride,
   ) {
     const { walletClient, writeableContract, override } = await this.formatWriteParams(
       providerOrPrivateKey,
-      callOverride
+      callOverride,
     );
     const [address] = await walletClient.getAddresses();
     const hash = await writeableContract.write.transferFrom([address, recipient as Address, amount], override);
@@ -68,7 +68,7 @@ class LikeErc20 extends Contract<typeof erc20Abi> {
     amount: bigint,
     spender: string,
     providerOrPrivateKey?: EIP1193Provider | string,
-    callOverride?: CallOverride
+    callOverride?: CallOverride,
   ) {
     const { writeableContract, override } = await this.formatWriteParams(providerOrPrivateKey, callOverride);
     const hash = await writeableContract.write.approve([spender as Address, amount], override);
@@ -79,7 +79,7 @@ class LikeErc20 extends Contract<typeof erc20Abi> {
     amount: bigint,
     spender: string,
     providerOrPrivateKey?: EIP1193Provider | string,
-    override?: CallOverride
+    override?: CallOverride,
   ) {
     const walletClient = this.getWalletClient(providerOrPrivateKey);
     const [address] = await walletClient.getAddresses();

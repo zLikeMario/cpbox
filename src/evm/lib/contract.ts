@@ -8,14 +8,15 @@ import {
   type Account,
   type Transport,
   type PrivateKeyAccount,
+  type GetContractReturnType,
 } from "viem";
 import Basic from "./basic";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import type { CallOverride } from "./type";
 
 class Contract<A extends Abi> extends Basic {
-  contractAddress: string;
-  abi: A;
+  readonly contractAddress: string;
+  readonly abi: A;
   constructor(chain: Chain, contractAddress: string, abi: A, rpcOrProvider?: string | EIP1193Provider) {
     super(chain, rpcOrProvider);
     this.contractAddress = contractAddress;
@@ -23,7 +24,7 @@ class Contract<A extends Abi> extends Basic {
   }
 
   @Memoize()
-  get readableContract() {
+  get readableContract(): GetContractReturnType<A, Contract<A>["publicClient"]> {
     return getContract({
       address: this.contractAddress as Address,
       abi: this.abi,
@@ -32,7 +33,7 @@ class Contract<A extends Abi> extends Basic {
   }
 
   @Memoize()
-  get writeableContract() {
+  get writeableContract(): GetContractReturnType<A, Contract<A>["walletClient"]> {
     return getContract({
       address: this.contractAddress as Address,
       abi: this.abi,
@@ -40,7 +41,9 @@ class Contract<A extends Abi> extends Basic {
     });
   }
 
-  getWriteableContract(client?: WalletClient<Transport, Chain, PrivateKeyAccount>) {
+  getWriteableContract(
+    client?: WalletClient<Transport, Chain, PrivateKeyAccount>,
+  ): GetContractReturnType<A, Contract<A>["walletClient"]> {
     return getContract({
       address: this.contractAddress as Address,
       abi: this.abi,
@@ -50,8 +53,12 @@ class Contract<A extends Abi> extends Basic {
 
   formatWriteParams<T extends boolean>(
     providerOrPrivateKey?: EIP1193Provider | string,
-    callOverride?: CallOverride<T>
-  ) {
+    callOverride?: CallOverride<T>,
+  ): {
+    walletClient: ReturnType<Contract<A>["getWalletClient"]>;
+    writeableContract: ReturnType<Contract<A>["getWriteableContract"]>;
+    override: { account: Account; chain: Chain } & CallOverride<T>;
+  } {
     const walletClient = this.getWalletClient(providerOrPrivateKey);
     const writeableContract = this.getWriteableContract(walletClient);
     return {
