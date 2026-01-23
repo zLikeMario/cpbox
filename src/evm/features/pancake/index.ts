@@ -22,9 +22,9 @@ import FACTORY_ABI_V2 from "../../abi/pancakeFactoryV2";
 import POOL_ABI_V2 from "../../abi/pancakePoolV2";
 import POOL_ABI_V3 from "../../abi/pancakePoolV3";
 import { BigNumber } from "@zlikemario/helper/number";
-import { Contract, type CallOverride } from "~/evm/lib";
+import { Contract, LikeErc20, type CallOverride } from "~/evm/lib";
 import { bsc } from "viem/chains";
-import type { Address, EIP1193Provider } from "viem";
+import { zeroAddress, type Address, type EIP1193Provider } from "viem";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import type { NumberString } from "@zlikemario/helper/types";
 
@@ -52,9 +52,8 @@ export class PancakeFactoryV3 extends Contract<typeof FACTORY_ABI_V3> {
     const results = await Promise.allSettled(
       PancakeFactoryV3.poolFees.map(async (fee) => {
         const poolAddress = await this.readableContract.read.getPool([outToken as Address, inToken as Address, fee]);
-        if (poolAddress === "0x0000000000000000000000000000000000000000") {
-          throw new Error("pool not found");
-        }
+        if (poolAddress === zeroAddress) throw new Error("pool not found");
+
         return {
           poolAddress,
           fee,
@@ -106,7 +105,7 @@ export class PancakePoolV3 extends Contract<typeof POOL_ABI_V3> {
   }
 }
 
-class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
+class Pancake extends Contract<typeof PANCAKE_SMART_ABI> {
   constructor(rpcOrProvider?: string | EIP1193Provider) {
     super(bsc, "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4", PANCAKE_SMART_ABI, rpcOrProvider);
   }
@@ -118,6 +117,16 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
       .dp(0, BigNumber.ROUND_DOWN)
       .toString();
     return BigInt(minOut);
+  }
+
+  async approve(
+    tokenAddress: string,
+    amount: bigint,
+    providerOrPrivateKey?: EIP1193Provider | string,
+    override?: CallOverride,
+  ) {
+    const likeErc20 = new LikeErc20(this.chain, tokenAddress, this.rpcOrProvider);
+    return await likeErc20.approvePreCheckAllowance(amount, this.contractAddress, providerOrPrivateKey, override);
   }
 
   @Memoize()
@@ -146,7 +155,7 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
     let fee = PancakeFactoryV2.fee;
     const factoryV2Contract = new PancakeFactoryV2(this.rpcOrProvider);
     poolAddress = await factoryV2Contract.getPoolAddress(outToken, inToken);
-    if (!poolAddress || poolAddress === "0x0000000000000000000000000000000000000000") {
+    if (!poolAddress || poolAddress === zeroAddress) {
       isV3 = true;
       const factoryV3Contract = new PancakeFactoryV3(this.rpcOrProvider);
       /**
@@ -162,7 +171,7 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
     return { poolAddress, isV3, poolFeeRate, fee };
   }
 
-  async getMinOutToken(outToken: string, inToken: string, inAmount: bigint, slippage: number) {
+  async getMinOutTokenAmount(outToken: string, inToken: string, inAmount: bigint, slippage: number) {
     const { isV3, poolAddress, poolFeeRate, fee } = await this.getPoolData(outToken, inToken);
     let price: NumberString;
     const realInAmount = BigInt(BigNumber(inAmount).times(BigNumber("1").minus(poolFeeRate)).toString());
@@ -174,7 +183,7 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
       price = await pool.getPrice();
     }
     return {
-      minOutToken: PancakeSwap.computeMinOutTokenAmount(realInAmount, price, slippage),
+      minOutToken: Pancake.computeMinOutTokenAmount(realInAmount, price, slippage),
       fee,
     };
   }
@@ -189,7 +198,7 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
   ) {
     const walletClient = this.getWalletClient(providerOrPrivateKey);
     const contract = this.getWriteableContract(walletClient);
-    const { minOutToken, fee } = await this.getMinOutToken(outToken, inToken, inAmount, slippage);
+    const { minOutToken, fee } = await this.getMinOutTokenAmount(outToken, inToken, inAmount, slippage);
     const receiver = walletClient.account.address;
     const nativeAddress = await this.nativeAddress();
     let value = 0n;
@@ -210,4 +219,4 @@ class PancakeSwap extends Contract<typeof PANCAKE_SMART_ABI> {
   }
 }
 
-export default PancakeSwap;
+export default Pancake;
