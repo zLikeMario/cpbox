@@ -29,8 +29,8 @@ import { Memoize } from "@zlikemario/helper/decorator-old";
 import type { NumberString } from "@zlikemario/helper/types";
 
 export class PancakeFactoryV2 extends Contract<typeof FACTORY_ABI_V2> {
-  static fee = 2500;
-  static poolFeeRate = "0.0025"; // 0.25%
+  static readonly fee = 2500;
+  static readonly poolFeeRate = "0.0025"; // 0.25%
   constructor(rpcOrProvider?: string | EIP1193Provider) {
     super(bsc, "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73", FACTORY_ABI_V2, rpcOrProvider);
   }
@@ -42,7 +42,7 @@ export class PancakeFactoryV2 extends Contract<typeof FACTORY_ABI_V2> {
 }
 
 export class PancakeFactoryV3 extends Contract<typeof FACTORY_ABI_V3> {
-  static poolFees = [100, 500, 2500, 10000]; // 0.25%
+  static readonly poolFees = [100, 500, 2500, 10000]; // 0.25%
   constructor(rpcOrProvider?: string | EIP1193Provider) {
     super(bsc, "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865", FACTORY_ABI_V3, rpcOrProvider);
   }
@@ -78,7 +78,7 @@ export class PancakeFactoryV3 extends Contract<typeof FACTORY_ABI_V3> {
 }
 
 export class PancakePoolV2 extends Contract<typeof POOL_ABI_V2> {
-  static poolFees = [100, 500, 2500, 10000]; // 0.25%
+  static readonly poolFees = [100, 500, 2500, 10000]; // 0.25%
   constructor(poolAddress: string, rpcOrProvider?: string | EIP1193Provider) {
     super(bsc, poolAddress, POOL_ABI_V2, rpcOrProvider);
   }
@@ -90,7 +90,7 @@ export class PancakePoolV2 extends Contract<typeof POOL_ABI_V2> {
 }
 
 export class PancakePoolV3 extends Contract<typeof POOL_ABI_V3> {
-  static poolFees = [100, 500, 2500, 10000]; // 0.25%
+  static readonly poolFees = [100, 500, 2500, 10000]; // 0.25%
   constructor(poolAddress: string, rpcOrProvider?: string | EIP1193Provider) {
     super(bsc, poolAddress, POOL_ABI_V3, rpcOrProvider);
   }

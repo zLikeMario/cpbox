@@ -128,8 +128,8 @@ export class FourMemeHelper extends Contract<typeof fourMemeHelper> {
 }
 
 class FourMeme extends Contract<typeof fourMemeV2> {
-  static mainnet = bsc;
-  static testnet = bscTestnet;
+  static readonly mainnet = bsc;
+  static readonly testnet = bscTestnet;
   fourMemeHelper: FourMemeHelper;
   constructor(chain: Chain, rpcOrProvider?: string | EIP1193Provider) {
     super(chain, FOURMEME, fourMemeV2, rpcOrProvider);
@@ -140,13 +140,13 @@ class FourMeme extends Contract<typeof fourMemeV2> {
     return getCreate2Address({ from: FACTORY_ADDRESS, salt: salt as Hex, bytecode: FOURMEME_TOKEN_CODE });
   }
 
-  static BNB = zeroAddress;
+  static readonly BNB = zeroAddress;
 
   static aligningAmount(v: bigint) {
     return (v / 1000000000n) * 1000000000n;
   }
 
-  static lpTradingFee = 0.0025;
+  static readonly lpTradingFee = 0.0025;
   static tradeWithFee(bnb: bigint) {
     return BigInt(BigNumber(FourMeme.lpTradingFee).times(bnb).plus(bnb).dp(0).toString());
   }
