@@ -296,7 +296,7 @@ class FourMeme extends Contract<typeof fourMemeV2> {
    *
    * @returns { imageUrl: string, signature: string, createArg: string, tokenAddress: string, tokenInfo: TokenInfo }
    */
-  async createToken(
+  async preparePublishToken(
     accessToken: string,
     tokenInfo: TokenInfo,
     amount: NumberString = "0", // 开发者买入
@@ -325,7 +325,7 @@ class FourMeme extends Contract<typeof fourMemeV2> {
     const accessToken = await this.login(providerOrPrivateKey);
 
     // 上传
-    const { signature, createArg } = await this.createToken(accessToken, tokenInfo, amount);
+    const { signature, createArg } = await this.preparePublishToken(accessToken, tokenInfo, amount);
 
     // 发币
     const walltClient = this.getWalletClient(providerOrPrivateKey);
