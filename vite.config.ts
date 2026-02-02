@@ -1,5 +1,8 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
+import pkg from "./package.json" assert { type: "json" };
+
+const externalDeps = new Set([...Object.keys(pkg.peerDependencies ?? {})]);
 
 export default defineConfig({
   base: "/",
@@ -18,7 +21,7 @@ export default defineConfig({
       formats: ["cjs", "es"],
     },
     rollupOptions: {
-      external: ["viem", "@zlikemario/helper"],
+      external: (id) => Array.from(externalDeps).some((dep) => id === dep || id.startsWith(`${dep}/`)),
       output: [
         {
           format: "es",

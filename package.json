@@ -1,6 +1,6 @@
 {
   "name": "@zlikemario/cpbox",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "files": [
     "dist",
@@ -44,8 +44,5 @@
     "@zlikemario/helper": "*",
     "axios": "*",
     "viem": "*"
-  },
-  "dependencies": {
-    "@reown/appkit": "^1.8.17"
   }
 }
