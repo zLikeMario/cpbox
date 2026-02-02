@@ -1,5 +1,4 @@
 import type { NumberString } from "@zlikemario/helper/types";
-import FourMeme from ".";
 import request from "~/api/request";
 
 export async function getUserNonce(address: string) {
@@ -54,7 +53,7 @@ export async function uploadTokenImage(accessToken: string, file: File) {
 }
 
 const createTokenFixedParams = {
-  lpTradingFee: FourMeme.lpTradingFee,
+  lpTradingFee: 0.0025,
   rushMode: false,
   onlyMPC: false, // 是否创建一个只能使用币安MPC钱包交易的令牌
   totalSupply: 1000000000,

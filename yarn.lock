@@ -406,10 +406,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@zlikemario/cpbox@workspace:.":
+"@zlikemario/cpbox@npm:^0.0.6, @zlikemario/cpbox@workspace:.":
   version: 0.0.0-use.local
   resolution: "@zlikemario/cpbox@workspace:."
   dependencies:
+    "@zlikemario/cpbox": "npm:^0.0.6"
     "@zlikemario/helper": "npm:^0.0.13"
     axios: "npm:^1.13.1"
     typescript: "npm:~5.9.3"
