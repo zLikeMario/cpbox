@@ -1,9 +1,11 @@
 import type { NumberString } from "@zlikemario/helper/types";
 import request from "~/api/request";
 
-export async function getUserNonce(address: string) {
+const requestWithProxy = (reqUrl: string, proxyUrl?: string) => `${proxyUrl ? `${proxyUrl}?url=` : ""}${reqUrl}`;
+
+export async function getUserNonce(address: string, proxyUrl?: string) {
   const response = await request.post<{ data: string; msg: string }>(
-    "https://four.meme/meme-api/v1/private/user/nonce/generate",
+    requestWithProxy(`https://four.meme/meme-api/v1/private/user/nonce/generate`, proxyUrl),
     {
       accountAddress: address, // "user wallet address"
       verifyType: "LOGIN",
@@ -16,10 +18,16 @@ export async function getUserNonce(address: string) {
   return result.data as string;
 }
 
-export async function loginFourMeme(address: string, nonce: string, sign: (message: string) => Promise<string>) {
+// 如果在前端使用该方法，会报错跨域，所以支持 proxyUrl 的传入
+export async function loginFourMeme(
+  address: string,
+  nonce: string,
+  sign: (message: string) => Promise<string>,
+  proxyUrl?: string,
+) {
   const signature = await sign(`You are sign in Meme ${nonce}`);
   const response = await request.post<{ data: string; msg: string }>(
-    "https://four.meme/meme-api/v1/private/user/login/dex",
+    requestWithProxy(`https://four.meme/meme-api/v1/private/user/login/dex`, proxyUrl),
     {
       region: "WEB",
       langType: "EN",
@@ -37,11 +45,11 @@ export async function loginFourMeme(address: string, nonce: string, sign: (messa
   return result.data as string;
 }
 
-export async function uploadTokenImage(accessToken: string, file: File) {
+export async function uploadTokenImage(accessToken: string, file: File, proxyUrl?: string) {
   const data = new FormData();
   data.set("file", file);
   const response = await request.post<{ data: string; msg: string }>(
-    "https://four.meme/meme-api/v1/private/token/upload",
+    requestWithProxy("https://four.meme/meme-api/v1/private/token/upload", proxyUrl),
     data,
     {
       headers: { "meme-web-access": accessToken },
@@ -97,9 +105,10 @@ export async function createToken(
     telegram?: string;
   },
   creatorBuyAmount: NumberString = "0", // 0 为不买入
+  proxyUrl?: string,
 ) {
   const response = await request.post<{ data: { createArg: string; signature: string }; msg: string }>(
-    "https://four.meme/meme-api/v1/private/token/create",
+    requestWithProxy("https://four.meme/meme-api/v1/private/token/create", proxyUrl),
     {
       ...createTokenFixedParams,
       name: tokenInfo.name,

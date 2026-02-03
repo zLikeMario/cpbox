@@ -131,9 +131,11 @@ class FourMeme extends Contract<typeof fourMemeV2> {
   static readonly mainnet = bsc;
   static readonly testnet = bscTestnet;
   fourMemeHelper: FourMemeHelper;
-  constructor(chain: Chain, rpcOrProvider?: string | EIP1193Provider) {
+  proxyUrl: string | undefined;
+  constructor(chain: Chain, rpcOrProvider?: string | EIP1193Provider, proxyUrl?: string) {
     super(chain, FOURMEME, fourMemeV2, rpcOrProvider);
     this.fourMemeHelper = new FourMemeHelper(chain, rpcOrProvider);
+    this.proxyUrl = proxyUrl;
   }
 
   static computeTokenAddress(salt: string) {
@@ -285,11 +287,11 @@ class FourMeme extends Contract<typeof fourMemeV2> {
    *
    * @returns {string} accessToken
    */
-  async login(providerOrPrivateKey?: EIP1193Provider | string) {
+  async login(providerOrPrivateKey?: EIP1193Provider | string, proxyUrl?: string) {
     const walltClient = await this.getWalletClient(providerOrPrivateKey);
     const walletAddress = walltClient.account.address;
-    const nonce = await getUserNonce(walletAddress);
-    return await loginFourMeme(walletAddress, nonce, (message) => walltClient.signMessage({ message }));
+    const nonce = await getUserNonce(walletAddress, proxyUrl);
+    return await loginFourMeme(walletAddress, nonce, (message) => walltClient.signMessage({ message }), proxyUrl);
   }
 
   /**
@@ -300,9 +302,10 @@ class FourMeme extends Contract<typeof fourMemeV2> {
     accessToken: string,
     tokenInfo: TokenInfo,
     amount: NumberString = "0", // 开发者买入
+    proxyUrl?: string,
   ) {
-    const imageUrl = await uploadTokenImage(accessToken, tokenInfo.image);
-    const result = await createToken(accessToken, imageUrl, tokenInfo, amount);
+    const imageUrl = await uploadTokenImage(accessToken, tokenInfo.image, proxyUrl);
+    const result = await createToken(accessToken, imageUrl, tokenInfo, amount, proxyUrl);
     const tokenAddress = FourMeme.computeTokenAddress(`0x${result.createArg.substring(130, 194)}`);
     return { imageUrl, tokenInfo, tokenAddress, ...result };
   }
@@ -322,10 +325,10 @@ class FourMeme extends Contract<typeof fourMemeV2> {
     override?: CallOverride,
   ) {
     // 登录
-    const accessToken = await this.login(providerOrPrivateKey);
+    const accessToken = await this.login(providerOrPrivateKey, this.proxyUrl);
 
     // 上传
-    const { signature, createArg } = await this.preparePublishToken(accessToken, tokenInfo, amount);
+    const { signature, createArg } = await this.preparePublishToken(accessToken, tokenInfo, amount, this.proxyUrl);
 
     // 发币
     const walltClient = this.getWalletClient(providerOrPrivateKey);

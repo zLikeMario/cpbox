@@ -406,31 +406,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@zlikemario/cpbox@npm:^0.0.6, @zlikemario/cpbox@workspace:.":
+"@zlikemario/cpbox@workspace:.":
   version: 0.0.0-use.local
   resolution: "@zlikemario/cpbox@workspace:."
   dependencies:
-    "@zlikemario/cpbox": "npm:^0.0.6"
-    "@zlikemario/helper": "npm:^0.0.13"
+    "@zlikemario/helper": "npm:^0.0.14"
     axios: "npm:^1.13.1"
     typescript: "npm:~5.9.3"
     viem: "npm:^2.44.4"
     vite: "npm:rolldown-vite@7.1.14"
     vitest: "npm:^3.2.4"
-  peerDependencies:
-    "@zlikemario/helper": "*"
-    axios: "*"
-    viem: "*"
   languageName: unknown
   linkType: soft
 
-"@zlikemario/helper@npm:^0.0.13":
-  version: 0.0.13
-  resolution: "@zlikemario/helper@npm:0.0.13"
-  peerDependencies:
-    bignumber.js: "*"
-    dayjs: "*"
-  checksum: 10c0/8572a4a918991b8ad853fbf159f0ce020babf528979a24af4d59a00fb7b26d5659106a2c39c9c2fa59cef1bdc3ea65ffc34ce9c1deb658c75c3d661bdd9be319
+"@zlikemario/helper@npm:^0.0.14":
+  version: 0.0.14
+  resolution: "@zlikemario/helper@npm:0.0.14"
+  dependencies:
+    bignumber.js: "npm:^9.3.1"
+    dayjs: "npm:^1.11.18"
+  checksum: 10c0/ce80203bb0c027079d6ff14f4ebb93385e8fefdb6b4f69113f81c66bfa22da287342bfb3ae5013c1088bdb96cdb54323529b8c253ebff1b64c75a903c1572813
   languageName: node
   linkType: hard
 
@@ -546,6 +541,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bignumber.js@npm:^9.3.1":
+  version: 9.3.1
+  resolution: "bignumber.js@npm:9.3.1"
+  checksum: 10c0/61342ba5fe1c10887f0ecf5be02ff6709271481aff48631f86b4d37d55a99b87ce441cfd54df3d16d10ee07ceab7e272fc0be430c657ffafbbbf7b7d631efb75
+  languageName: node
+  linkType: hard
+
 "brace-expansion@npm:^2.0.1":
   version: 2.0.2
   resolution: "brace-expansion@npm:2.0.2"
@@ -652,6 +654,13 @@ __metadata:
     shebang-command: "npm:^2.0.0"
     which: "npm:^2.0.1"
   checksum: 10c0/053ea8b2135caff68a9e81470e845613e374e7309a47731e81639de3eaeb90c3d01af0e0b44d2ab9d50b43467223b88567dfeb3262db942dc063b9976718ffc1
+  languageName: node
+  linkType: hard
+
+"dayjs@npm:^1.11.18":
+  version: 1.11.19
+  resolution: "dayjs@npm:1.11.19"
+  checksum: 10c0/7d8a6074a343f821f81ea284d700bd34ea6c7abbe8d93bce7aba818948957c1b7f56131702e5e890a5622cdfc05dcebe8aed0b8313bdc6838a594d7846b0b000
   languageName: node
   linkType: hard
 
