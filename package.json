@@ -1,6 +1,6 @@
 {
   "name": "@zlikemario/cpbox",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "files": [
     "dist",
@@ -14,14 +14,12 @@
     "test": "vitest"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
-    "vite": "npm:rolldown-vite@7.1.14",
-    "vitest": "^3.2.4"
-  },
-  "dependencies": {
     "@zlikemario/helper": "^0.0.14",
     "axios": "^1.13.1",
-    "viem": "^2.44.4"
+    "typescript": "~5.9.3",
+    "viem": "^2.44.4",
+    "vite": "npm:rolldown-vite@7.1.14",
+    "vitest": "^3.2.4"
   },
   "resolutions": {
     "vite": "npm:rolldown-vite@7.1.14"
@@ -41,5 +39,10 @@
       "require": "./dist/evm.cjs"
     }
   },
-  "packageManager": "yarn@4.10.3"
+  "packageManager": "yarn@4.10.3",
+  "peerDependencies": {
+    "@zlikemario/helper": ">=0.0.14",
+    "axios": ">=1.13.1",
+    "viem": ">=2.44.4"
+  }
 }

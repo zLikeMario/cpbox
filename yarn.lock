@@ -416,6 +416,10 @@ __metadata:
     viem: "npm:^2.44.4"
     vite: "npm:rolldown-vite@7.1.14"
     vitest: "npm:^3.2.4"
+  peerDependencies:
+    "@zlikemario/helper": ">=0.0.14"
+    axios: ">=1.13.1"
+    viem: ">=2.44.4"
   languageName: unknown
   linkType: soft
 
