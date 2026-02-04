@@ -289,7 +289,7 @@ class FourMeme extends Contract<typeof fourMemeV2> {
    */
   async login(providerOrPrivateKey?: EIP1193Provider | string, proxyUrl?: string) {
     const walltClient = await this.getWalletClient(providerOrPrivateKey);
-    const walletAddress = walltClient.account.address;
+    const [walletAddress] = await walltClient.getAddresses();
     const nonce = await getUserNonce(walletAddress, proxyUrl);
     return await loginFourMeme(walletAddress, nonce, (message) => walltClient.signMessage({ message }), proxyUrl);
   }
