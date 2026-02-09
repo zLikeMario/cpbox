@@ -24,6 +24,15 @@ class Contract<A extends Abi> extends Basic {
   }
 
   @Memoize()
+  get wsContract(): GetContractReturnType<A, Contract<A>["publicClient"]> {
+    return getContract({
+      address: this.contractAddress as Address,
+      abi: this.abi,
+      client: this.wsClient,
+    });
+  }
+
+  @Memoize()
   get readableContract(): GetContractReturnType<A, Contract<A>["publicClient"]> {
     return getContract({
       address: this.contractAddress as Address,

@@ -3,25 +3,34 @@ import {
   createWalletClient,
   custom,
   http,
+  webSocket,
   type Address,
   type Chain,
   type EIP1193Provider,
   type Hex,
   type PrivateKeyAccount,
+  type PublicClient,
   type Transport,
+  type WebSocketTransport,
 } from "viem";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import { privateKeyToAccount } from "viem/accounts";
+import type { MaybeUndefined } from "@zlikemario/helper/types";
 
 class Basic {
   transport: Transport;
+  wsTransport: MaybeUndefined<WebSocketTransport>;
   chain: Chain;
   rpcOrProvider?: string | EIP1193Provider;
   constructor(chain: Chain, rpcOrProvider?: string | EIP1193Provider) {
     this.chain = chain;
     this.rpcOrProvider = rpcOrProvider;
     this.transport = typeof rpcOrProvider === "string" || !rpcOrProvider ? http(rpcOrProvider) : custom(rpcOrProvider);
+    this.wsTransport =
+      typeof rpcOrProvider === "string" || !rpcOrProvider
+        ? webSocket(rpcOrProvider?.replace(/^http(s?)/, (_, s) => `ws${s}`))
+        : void 0;
   }
 
   async getBalance(address: string) {
@@ -56,6 +65,14 @@ class Basic {
       chain: this.chain,
       transport: this.transport,
     });
+  }
+
+  @Memoize()
+  get wsClient() {
+    return createPublicClient({
+      chain: this.chain,
+      transport: this.wsTransport ?? this.transport,
+    }) as PublicClient<WebSocketTransport, Chain>;
   }
 
   @Memoize()

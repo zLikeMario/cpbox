@@ -1,5 +1,13 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {},
+  base: "/",
+  resolve: {
+    alias: {
+      "~": "/src",
+    },
+  },
+  test: {
+    testTimeout: 30000,
+  },
 });

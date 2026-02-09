@@ -413,13 +413,13 @@ __metadata:
     "@zlikemario/helper": "npm:^0.0.14"
     axios: "npm:^1.13.1"
     typescript: "npm:~5.9.3"
-    viem: "npm:^2.44.4"
+    viem: "npm:^2.45.2"
     vite: "npm:rolldown-vite@7.1.14"
     vitest: "npm:^3.2.4"
   peerDependencies:
     "@zlikemario/helper": ">=0.0.14"
     axios: ">=1.13.1"
-    viem: ">=2.44.4"
+    viem: ">=2.45.2"
   languageName: unknown
   linkType: soft
 
@@ -1859,9 +1859,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.44.4":
-  version: 2.44.4
-  resolution: "viem@npm:2.44.4"
+"viem@npm:^2.45.2":
+  version: 2.45.2
+  resolution: "viem@npm:2.45.2"
   dependencies:
     "@noble/curves": "npm:1.9.1"
     "@noble/hashes": "npm:1.8.0"
@@ -1876,7 +1876,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/046eec6871f7ffba466bd579f5836710477078ec53390ace96a6c815f37c336b6cca6c605725aaba3fb919eb186199ebab9840aef08facfe8a8bf5e636506f73
+  checksum: 10c0/3823a121140a041dee335a4dd72d649086b2e0de3a7a35a06edfeb58d0bd8665f0b07fa8b070915d25383fe69ca6cbe2e3dec62d174308681f58881b1a09b302
   languageName: node
   linkType: hard
 

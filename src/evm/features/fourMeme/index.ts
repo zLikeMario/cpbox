@@ -50,6 +50,7 @@ import { FACTORY_ADDRESS, FOURMEME, FOURMEME_HELPER, FOURMEME_TOKEN_CODE } from 
 import type { NumberString } from "@zlikemario/helper/types";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import { bsc, bscTestnet } from "viem/chains";
+import { tryCatchAsync } from "@zlikemario/helper/utils";
 
 interface TokenData {
   version: bigint;
@@ -64,6 +65,17 @@ interface TokenData {
   funds: bigint;
   maxFunds: bigint;
   liquidityAdded: boolean;
+}
+
+export interface TokenCreateEventReturn {
+  creator?: Address;
+  token: Address;
+  requestId: bigint;
+  name: string;
+  symbol: string;
+  totalSupply: bigint;
+  launchTime: bigint; // 1770641178n;
+  launchFee: bigint; // 0n;
 }
 
 export interface TokenInfo {
@@ -339,6 +351,65 @@ class FourMeme extends Contract<typeof fourMemeV2> {
       ...override,
     });
     return this.wrapWriteContractReturn(hash);
+  }
+
+  #watchState: "idle" | "creating" | "active" = "idle";
+  #subscriberCount = 0;
+  #tokenCreateCallbacks = new Set<(token: Partial<TokenCreateEventReturn>) => any>();
+  #tokenCreateErrorCallbacks = new Set<(err: Error) => any>();
+  #unwatchTokenCreateEvent: (() => void) | undefined;
+  #ensureWatch() {
+    if (this.#watchState !== "idle") return;
+    this.#watchState = "creating";
+
+    const unwatch = this.wsContract.watchEvent.TokenCreate({
+      onLogs: (logs) => {
+        logs.forEach((log) => {
+          this.#tokenCreateCallbacks.forEach((fn) => tryCatchAsync(fn(log.args)));
+        });
+      },
+      onError: (err) => {
+        this.#tokenCreateErrorCallbacks.forEach((fn) => tryCatchAsync(fn(err)));
+        if (!this.#tokenCreateErrorCallbacks.size) {
+          console.error(err);
+        }
+      },
+    });
+
+    this.#unwatchTokenCreateEvent = () => {
+      unwatch();
+      this.#unwatchTokenCreateEvent = undefined;
+      this.#watchState = "idle";
+    };
+
+    this.#watchState = "active";
+  }
+
+  async onTokenCreate(options: {
+    onToken: (token: Partial<TokenCreateEventReturn>) => any;
+    onError?: (err: Error) => any;
+  }) {
+    this.#tokenCreateCallbacks.add(options.onToken);
+    if (options.onError) this.#tokenCreateErrorCallbacks.add(options.onError);
+
+    let active = true;
+    this.#subscriberCount++;
+    this.#ensureWatch();
+
+    return () => {
+      if (!active) return;
+      active = false;
+      this.#tokenCreateCallbacks.delete(options.onToken);
+      if (options.onError) this.#tokenCreateErrorCallbacks.delete(options.onError);
+
+      this.#subscriberCount--;
+      if (this.#subscriberCount === 0) {
+        this.#unwatchTokenCreateEvent?.();
+      }
+      if (this.#subscriberCount < 0) {
+        throw new Error("subscriberCount corrupted");
+      }
+    };
   }
 }
 
