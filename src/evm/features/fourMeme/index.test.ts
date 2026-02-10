@@ -22,13 +22,15 @@ describe("FourMeme", () => {
         clearTimeout(timer);
       };
 
-      const stop = await fourMeme.onTokenCreate((token) => {
-        count += 1;
-        console.log(token);
-        if (count >= requiredLogs) {
-          cleanup();
-          resolve();
-        }
+      const stop = await fourMeme.onTokenCreate({
+        onCallback: (token) => {
+          count += 1;
+          console.log(token);
+          if (count >= requiredLogs) {
+            cleanup();
+            resolve();
+          }
+        },
       });
 
       const timer = setTimeout(() => {

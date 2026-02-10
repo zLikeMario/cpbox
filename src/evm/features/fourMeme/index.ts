@@ -51,6 +51,7 @@ import type { NumberString } from "@zlikemario/helper/types";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import { bsc, bscTestnet } from "viem/chains";
 import { tryCatchAsync } from "@zlikemario/helper/utils";
+import { createEVMContractEvent } from "~/evm/lib/utils";
 
 interface TokenData {
   version: bigint;
@@ -76,6 +77,47 @@ export interface TokenCreateEventReturn {
   totalSupply: bigint;
   launchTime: bigint; // 1770641178n;
   launchFee: bigint; // 0n;
+}
+
+export interface LiquidityAddedEventReturn {
+  base?: Address;
+  offers?: bigint;
+  quote?: Address;
+  funds?: bigint;
+}
+
+export interface TokenPurchaseEventReturn {
+  token?: Address;
+  account?: Address;
+  price?: bigint;
+  amount?: bigint;
+  cost?: bigint;
+  fee?: bigint;
+  offers?: bigint;
+  funds?: bigint;
+}
+
+export interface TokenPurchase2EventReturn {
+  origin?: bigint;
+}
+
+export interface TokenSaleEventReturn {
+  token?: Address;
+  account?: Address;
+  price?: bigint;
+  amount?: bigint;
+  cost?: bigint;
+  fee?: bigint;
+  offers?: bigint;
+  funds?: bigint;
+}
+
+export interface TokenSale2EventReturn {
+  origin?: bigint;
+}
+
+export interface TradeStopEventReturn {
+  token?: Address;
 }
 
 export interface TokenInfo {
@@ -353,64 +395,77 @@ class FourMeme extends Contract<typeof fourMemeV2> {
     return this.wrapWriteContractReturn(hash);
   }
 
-  #watchState: "idle" | "creating" | "active" = "idle";
-  #subscriberCount = 0;
-  #tokenCreateCallbacks = new Set<(token: Partial<TokenCreateEventReturn>) => any>();
-  #tokenCreateErrorCallbacks = new Set<(err: Error) => any>();
-  #unwatchTokenCreateEvent: (() => void) | undefined;
-  #ensureWatch() {
-    if (this.#watchState !== "idle") return;
-    this.#watchState = "creating";
-
-    const unwatch = this.wsContract.watchEvent.TokenCreate({
+  onTokenCreate = createEVMContractEvent<Partial<TokenCreateEventReturn>>("FourMeme TokenCreate", (onData, onError) => {
+    return this.wsContract.watchEvent.TokenCreate({
       onLogs: (logs) => {
-        logs.forEach((log) => {
-          this.#tokenCreateCallbacks.forEach((fn) => tryCatchAsync(fn(log.args)));
-        });
+        logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
       },
-      onError: (err) => {
-        this.#tokenCreateErrorCallbacks.forEach((fn) => tryCatchAsync(fn(err)));
-        if (!this.#tokenCreateErrorCallbacks.size) {
-          console.error(err);
-        }
-      },
+      onError: (err) => tryCatchAsync(() => onError(err)),
     });
+  });
 
-    this.#unwatchTokenCreateEvent = () => {
-      unwatch();
-      this.#unwatchTokenCreateEvent = undefined;
-      this.#watchState = "idle";
-    };
+  onLiquidityAdded = createEVMContractEvent<Partial<LiquidityAddedEventReturn>>(
+    "FourMeme LiquidityAdded",
+    (onData, onError) => {
+      return this.wsContract.watchEvent.LiquidityAdded({
+        onLogs: (logs) => {
+          logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      });
+    },
+  );
 
-    this.#watchState = "active";
-  }
+  onTokenPurchase = createEVMContractEvent<Partial<TokenPurchaseEventReturn>>(
+    "FourMeme TokenPurchase",
+    (onData, onError) => {
+      return this.wsContract.watchEvent.TokenPurchase({
+        onLogs: (logs) => {
+          logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      });
+    },
+  );
 
-  async onTokenCreate(options: {
-    onToken: (token: Partial<TokenCreateEventReturn>) => any;
-    onError?: (err: Error) => any;
-  }) {
-    this.#tokenCreateCallbacks.add(options.onToken);
-    if (options.onError) this.#tokenCreateErrorCallbacks.add(options.onError);
+  onTokenPurchase2 = createEVMContractEvent<Partial<TokenPurchase2EventReturn>>(
+    "FourMeme TokenPurchase2",
+    (onData, onError) => {
+      return this.wsContract.watchEvent.TokenPurchase2({
+        onLogs: (logs) => {
+          logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      });
+    },
+  );
 
-    let active = true;
-    this.#subscriberCount++;
-    this.#ensureWatch();
+  onTokenSale = createEVMContractEvent<Partial<TokenSaleEventReturn>>("FourMeme TokenSale", (onData, onError) => {
+    return this.wsContract.watchEvent.TokenSale({
+      onLogs: (logs) => {
+        logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
+      },
+      onError: (err) => tryCatchAsync(() => onError(err)),
+    });
+  });
 
-    return () => {
-      if (!active) return;
-      active = false;
-      this.#tokenCreateCallbacks.delete(options.onToken);
-      if (options.onError) this.#tokenCreateErrorCallbacks.delete(options.onError);
+  onTokenSale2 = createEVMContractEvent<Partial<TokenSale2EventReturn>>("FourMeme TokenSale2", (onData, onError) => {
+    return this.wsContract.watchEvent.TokenSale2({
+      onLogs: (logs) => {
+        logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
+      },
+      onError: (err) => tryCatchAsync(() => onError(err)),
+    });
+  });
 
-      this.#subscriberCount--;
-      if (this.#subscriberCount === 0) {
-        this.#unwatchTokenCreateEvent?.();
-      }
-      if (this.#subscriberCount < 0) {
-        throw new Error("subscriberCount corrupted");
-      }
-    };
-  }
+  onTradeStop = createEVMContractEvent<Partial<TradeStopEventReturn>>("FourMeme TradeStop", (onData, onError) => {
+    return this.wsContract.watchEvent.TradeStop({
+      onLogs: (logs) => {
+        logs.forEach((log) => tryCatchAsync(() => onData(log.args)));
+      },
+      onError: (err) => tryCatchAsync(() => onError(err)),
+    });
+  });
 }
 
 export default FourMeme;

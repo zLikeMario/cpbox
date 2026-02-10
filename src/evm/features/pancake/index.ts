@@ -27,6 +27,48 @@ import { bsc } from "viem/chains";
 import { zeroAddress, type Address, type EIP1193Provider } from "viem";
 import { Memoize } from "@zlikemario/helper/decorator-old";
 import type { NumberString } from "@zlikemario/helper/types";
+import { tryCatchAsync } from "@zlikemario/helper/utils";
+import { createEVMContractEvent } from "~/evm/lib/utils";
+
+export interface PairCreatedEventReturn {
+  token0?: Address;
+  token1?: Address;
+  pair?: Address;
+  arg3?: bigint;
+}
+
+export interface PoolCreatedEventReturn {
+  token0?: Address;
+  token1?: Address;
+  fee?: number;
+  tickSpacing?: number;
+  pool?: Address;
+}
+
+export interface FeeAmountEnabledEventReturn {
+  fee?: number;
+  tickSpacing?: number;
+}
+
+export interface FeeAmountExtraInfoUpdatedEventReturn {
+  fee?: number;
+  whitelistRequested?: boolean;
+  enabled?: boolean;
+}
+
+export interface OwnerChangedEventReturn {
+  oldOwner?: Address;
+  newOwner?: Address;
+}
+
+export interface SetLmPoolDeployerEventReturn {
+  lmPoolDeployer?: Address;
+}
+
+export interface WhiteListAddedEventReturn {
+  user?: Address;
+  verified?: boolean;
+}
 
 export class PancakeFactoryV2 extends Contract<typeof FACTORY_ABI_V2> {
   static readonly fee = 2500;
@@ -39,6 +81,21 @@ export class PancakeFactoryV2 extends Contract<typeof FACTORY_ABI_V2> {
   async getPoolAddress(outToken: string, inToken: string) {
     return this.readableContract.read.getPair([outToken as Address, inToken as Address]);
   }
+
+  onPairCreated = createEVMContractEvent<PairCreatedEventReturn>("Pancake PairCreated", (onData, onError) => {
+    return this.wsContract.watchEvent.PairCreated(
+      {},
+      {
+        onLogs: (logs) => {
+          logs.forEach((log) => {
+            const [token0, token1, pair, arg3] = log.args;
+            tryCatchAsync(() => onData({ token0, token1, pair, arg3 }));
+          });
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      },
+    );
+  });
 }
 
 export class PancakeFactoryV3 extends Contract<typeof FACTORY_ABI_V3> {
@@ -75,6 +132,99 @@ export class PancakeFactoryV3 extends Contract<typeof FACTORY_ABI_V3> {
       )
       .map((i) => i.value);
   }
+
+  onPoolCreated = createEVMContractEvent<PoolCreatedEventReturn>("Pancake PoolCreated", (onData, onError) => {
+    return this.wsContract.watchEvent.PoolCreated(
+      {},
+      {
+        onLogs: (logs) => {
+          logs.forEach((log) => {
+            tryCatchAsync(() => onData(log.args));
+          });
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      },
+    );
+  });
+
+  onFeeAmountEnabled = createEVMContractEvent<FeeAmountEnabledEventReturn>(
+    "Pancake FeeAmountEnabled",
+    (onData, onError) => {
+      return this.wsContract.watchEvent.FeeAmountEnabled(
+        {},
+        {
+          onLogs: (logs) => {
+            logs.forEach((log) => {
+              tryCatchAsync(() => onData(log.args));
+            });
+          },
+          onError: (err) => tryCatchAsync(() => onError(err)),
+        },
+      );
+    },
+  );
+
+  onFeeAmountExtraInfoUpdated = createEVMContractEvent<FeeAmountExtraInfoUpdatedEventReturn>(
+    "Pancake FeeAmountExtraInfoUpdated",
+    (onData, onError) => {
+      return this.wsContract.watchEvent.FeeAmountExtraInfoUpdated(
+        {},
+        {
+          onLogs: (logs) => {
+            logs.forEach((log) => {
+              tryCatchAsync(() => onData(log.args));
+            });
+          },
+          onError: (err) => tryCatchAsync(() => onError(err)),
+        },
+      );
+    },
+  );
+
+  onOwnerChanged = createEVMContractEvent<OwnerChangedEventReturn>("Pancake OwnerChanged", (onData, onError) => {
+    return this.wsContract.watchEvent.OwnerChanged(
+      {},
+      {
+        onLogs: (logs) => {
+          logs.forEach((log) => {
+            tryCatchAsync(() => onData(log.args));
+          });
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      },
+    );
+  });
+
+  onSetLmPoolDeployer = createEVMContractEvent<SetLmPoolDeployerEventReturn>(
+    "Pancake SetLmPoolDeployer",
+    (onData, onError) => {
+      return this.wsContract.watchEvent.SetLmPoolDeployer(
+        {},
+        {
+          onLogs: (logs) => {
+            logs.forEach((log) => {
+              tryCatchAsync(() => onData(log.args));
+            });
+          },
+          onError: (err) => tryCatchAsync(() => onError(err)),
+        },
+      );
+    },
+  );
+
+  onWhiteListAdded = createEVMContractEvent<WhiteListAddedEventReturn>("Pancake WhiteListAdded", (onData, onError) => {
+    return this.wsContract.watchEvent.WhiteListAdded(
+      {},
+      {
+        onLogs: (logs) => {
+          logs.forEach((log) => {
+            tryCatchAsync(() => onData(log.args));
+          });
+        },
+        onError: (err) => tryCatchAsync(() => onError(err)),
+      },
+    );
+  });
 }
 
 export class PancakePoolV2 extends Contract<typeof POOL_ABI_V2> {

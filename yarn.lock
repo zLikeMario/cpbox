@@ -410,26 +410,25 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@zlikemario/cpbox@workspace:."
   dependencies:
-    "@zlikemario/helper": "npm:^0.0.14"
+    "@zlikemario/helper": "npm:^1.0.2"
     axios: "npm:^1.13.1"
     typescript: "npm:~5.9.3"
     viem: "npm:^2.45.2"
     vite: "npm:rolldown-vite@7.1.14"
     vitest: "npm:^3.2.4"
   peerDependencies:
-    "@zlikemario/helper": ">=0.0.14"
+    "@zlikemario/helper": ">=1.0.2"
     axios: ">=1.13.1"
     viem: ">=2.45.2"
   languageName: unknown
   linkType: soft
 
-"@zlikemario/helper@npm:^0.0.14":
-  version: 0.0.14
-  resolution: "@zlikemario/helper@npm:0.0.14"
+"@zlikemario/helper@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@zlikemario/helper@npm:1.0.2"
   dependencies:
     bignumber.js: "npm:^9.3.1"
-    dayjs: "npm:^1.11.18"
-  checksum: 10c0/ce80203bb0c027079d6ff14f4ebb93385e8fefdb6b4f69113f81c66bfa22da287342bfb3ae5013c1088bdb96cdb54323529b8c253ebff1b64c75a903c1572813
+  checksum: 10c0/92e00707a8a2ba37227a8b2555391d594f0465ebc8e982df54ed098d2b7a319669e6c9f04ffd02738c98bc76168cb1d8b3b3844b533b1d228e7ddac0d0af8330
   languageName: node
   linkType: hard
 
@@ -658,13 +657,6 @@ __metadata:
     shebang-command: "npm:^2.0.0"
     which: "npm:^2.0.1"
   checksum: 10c0/053ea8b2135caff68a9e81470e845613e374e7309a47731e81639de3eaeb90c3d01af0e0b44d2ab9d50b43467223b88567dfeb3262db942dc063b9976718ffc1
-  languageName: node
-  linkType: hard
-
-"dayjs@npm:^1.11.18":
-  version: 1.11.19
-  resolution: "dayjs@npm:1.11.19"
-  checksum: 10c0/7d8a6074a343f821f81ea284d700bd34ea6c7abbe8d93bce7aba818948957c1b7f56131702e5e890a5622cdfc05dcebe8aed0b8313bdc6838a594d7846b0b000
   languageName: node
   linkType: hard
 
